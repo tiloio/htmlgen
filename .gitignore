@@ -1,3 +1,6 @@
+out/
+running-test-resources/
+
 # Logs
 logs
 *.log
