@@ -52,17 +52,14 @@ describe("generate", () => {
       }),
     ]);
 
-    const generatePromise = generate({ pagesDir, templatesDir, outputDir });
+    const generatePromise = runViaCli({ pagesDir, templatesDir, outputDir });
 
-    await expect(generatePromise).rejects.toThrowError(
-      new Error(
-        `🛑 Could not find the template 'templates.footer' in the page 'index.mustache'.
+    await expect(generatePromise).rejects.toThrow(
+      `🛑 Could not find the template 'templates.footer' in the page 'index.mustache'.
    Make sure you created a 'footer.html' in the templates directory.`
-      )
     );
   });
 
-  test.todo("test cli fails");
   test.todo("test out gets deleted on fail");
 });
 
@@ -73,7 +70,7 @@ const exec = promisify(execLegacy);
 const runViaCli = async (options: Options) => {
   await exec("npm run prepublish");
   await exec("npm link");
-  const { stdout } = await exec(
+  return await exec(
     `htmlgen --templatesDir ${options.templatesDir} --outputDir ${options.outputDir} --pagesDir ${options.pagesDir}`
   );
 };
