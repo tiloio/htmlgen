@@ -6,9 +6,9 @@ const fs = rawFs.promises;
 
 describe("generate", () => {
   test("finds templates in searchPath and creats outputDir", async () => {
-    const pagesDir = await createTestDirectory("pages");
-    const templatesDir = await createTestDirectory("templates");
+    const { pagesDir, templatesDir, outputDir } = await createDirectories();
 
+    const indexHtmlPath = path.join(outputDir, "index.html");
     const headerTemplate = `<h1>Hello World!</h1>`;
     await Promise.all([
       createFile({
@@ -23,19 +23,55 @@ describe("generate", () => {
       }),
     ]);
 
-    const outputDir = path.join(process.cwd(), "out");
-    await generate({
-      pagesDir: pagesDir,
-      templatesDir: templatesDir,
-      outputDir,
-    });
+    await generate({ pagesDir, templatesDir, outputDir });
 
-    const indexHtmlContent = await readFile(path.join(outputDir, "index.html"));
+    const indexHtmlContent = await readFile(indexHtmlPath);
     expect(indexHtmlContent.toString()).toEqual(
       htmlFileContent(headerTemplate)
     );
   });
+
+  test("fails if pages template id is not in templates directory", async () => {
+    const { pagesDir, templatesDir, outputDir } = await createDirectories();
+
+    const headerTemplate = `<h1>Hello World!</h1>`;
+    await Promise.all([
+      createFile({
+        dir: pagesDir,
+        name: "index.mustache",
+        content: htmlFileContent(`
+          {{{ templates.header }}} 
+          some other content 
+          {{{ templates.footer }}}
+          `),
+      }),
+      createFile({
+        dir: templatesDir,
+        name: "header.html",
+        content: headerTemplate,
+      }),
+    ]);
+
+    const generatePromise = generate({ pagesDir, templatesDir, outputDir });
+
+    await expect(generatePromise).rejects.toThrowError(
+      new Error(
+        `🛑 Could not find the template 'templates.footer' in the page 'index.mustache'.
+Make sure you created a 'footer.html' in the templates directory.`
+      )
+    );
+  });
 });
+
+const createDirectories = async () => {
+  const [pagesDir, templatesDir] = await Promise.all([
+    createTestDirectory("pages"),
+    createTestDirectory("templates"),
+  ]);
+
+  const outputDir = path.join(process.cwd(), "out");
+  return { pagesDir, templatesDir, outputDir };
+};
 
 async function createTestDirectory(name: string) {
   const testDirectory = path.join(
