@@ -1,10 +1,15 @@
 import path from "path";
-import { generate } from "./index";
 import { readFile } from "fs/promises";
 import { createDirectories, createFile, htmlFileContent } from "./test/helper";
 import { Options } from "./types";
+import * as fs from "fs";
 
 describe("generate", () => {
+  beforeAll(async () => {
+    await exec("npm run prepublish");
+    await exec("npm link");
+  });
+
   test("finds templates in searchPath and creats outputDir", async () => {
     const { pagesDir, templatesDir, outputDir } = await createDirectories();
 
@@ -60,7 +65,23 @@ describe("generate", () => {
     );
   });
 
-  test.todo("test out gets deleted on fail");
+  test("clears out directory if process fails", async () => {
+    const { pagesDir, templatesDir, outputDir } = await createDirectories();
+
+    await Promise.all([
+      createFile({
+        dir: pagesDir,
+        name: "index.mustache",
+        content: htmlFileContent(`{{{ templates.header }}}`),
+      }),
+    ]);
+
+    try {
+      await runViaCli({ pagesDir, templatesDir, outputDir });
+    } catch (e) {}
+
+    expect(fs.existsSync(outputDir)).toBeFalsy();
+  });
 });
 
 import { promisify } from "util";
@@ -68,9 +89,7 @@ import { exec as execLegacy } from "child_process";
 const exec = promisify(execLegacy);
 
 const runViaCli = async (options: Options) => {
-  await exec("npm run prepublish");
-  await exec("npm link");
-  return await exec(
+  await exec(
     `htmlgen --templatesDir ${options.templatesDir} --outputDir ${options.outputDir} --pagesDir ${options.pagesDir}`
   );
 };
