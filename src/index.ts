@@ -5,7 +5,7 @@ import { listFiles } from "./files/list-files";
 
 export const generate = async (options: Options) => {
   const { pages, templateFiles } = await listFiles(options);
-
+  console.log({ pages, templateFiles });
   await createOutputDir(options);
 
   await buildAllPages(pages, options.outputDir, templateFiles);

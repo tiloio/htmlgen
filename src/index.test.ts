@@ -1,8 +1,8 @@
 import path from "path";
-import rawFs from "fs";
 import { generate } from "./index";
-import { readFile, write, writeFile } from "fs/promises";
-const fs = rawFs.promises;
+import { readFile } from "fs/promises";
+import { createDirectories, createFile, htmlFileContent } from "./test/helper";
+import { Options } from "./types";
 
 describe("generate", () => {
   test("finds templates in searchPath and creats outputDir", async () => {
@@ -23,7 +23,7 @@ describe("generate", () => {
       }),
     ]);
 
-    await generate({ pagesDir, templatesDir, outputDir });
+    await runViaCli({ pagesDir, templatesDir, outputDir });
 
     const indexHtmlContent = await readFile(indexHtmlPath);
     expect(indexHtmlContent.toString()).toEqual(
@@ -57,54 +57,23 @@ describe("generate", () => {
     await expect(generatePromise).rejects.toThrowError(
       new Error(
         `🛑 Could not find the template 'templates.footer' in the page 'index.mustache'.
-Make sure you created a 'footer.html' in the templates directory.`
+   Make sure you created a 'footer.html' in the templates directory.`
       )
     );
   });
+
+  test.todo("test cli fails");
+  test.todo("test out gets deleted on fail");
 });
 
-const createDirectories = async () => {
-  const [pagesDir, templatesDir] = await Promise.all([
-    createTestDirectory("pages"),
-    createTestDirectory("templates"),
-  ]);
+import { promisify } from "util";
+import { exec as execLegacy } from "child_process";
+const exec = promisify(execLegacy);
 
-  const outputDir = path.join(process.cwd(), "out");
-  return { pagesDir, templatesDir, outputDir };
-};
-
-async function createTestDirectory(name: string) {
-  const testDirectory = path.join(
-    process.cwd(),
-    "running-test-resources",
-    name
+const runViaCli = async (options: Options) => {
+  await exec("npm run prepublish");
+  await exec("npm link");
+  const { stdout } = await exec(
+    `htmlgen --templatesDir ${options.templatesDir} --outputDir ${options.outputDir} --pagesDir ${options.pagesDir}`
   );
-  await fs.mkdir(testDirectory, { recursive: true });
-
-  return testDirectory;
-}
-
-async function createFile(options: {
-  dir: string;
-  name: string;
-  content: string;
-}) {
-  const filePath = path.resolve(options.dir, options.name);
-  await writeFile(filePath, options.content);
-
-  return { path: filePath };
-}
-
-const htmlFileContent = (body: string) => `
-      <!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test</title>
-</head>
-<body>
-  ${body}
-</body>
-</html>
-      `;
+};
